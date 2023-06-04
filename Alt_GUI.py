@@ -11,6 +11,7 @@ class MainWindow(QWidget):
     def __init__(self):
         self.V1 = None
         self.V2 = None
+        self.path = ""
         super().__init__()
 
         # Ustawienia okna
@@ -107,31 +108,31 @@ class MainWindow(QWidget):
         vbox.addLayout(hbox3)
         vbox.addLayout(hbox4)
         vbox.addLayout(hbox5)
-        
+
         # Glowny uklad
         self.setLayout(vbox)
+
     """Metoda do wybrania zdjecia i jednoczesnie do wskazania folderu z pozostalymi zdjeciami 
     potrzebnymi do stworzenia modeli"""
     def select_image(self):
-        global path
         #Sciezka do zdjecia
-        path = eg.fileopenbox()
+        self.path = eg.fileopenbox()
         #Jezeli pusta to zostanie zastapiona .x
-        if path is None:
-            path = ".x"
+        if self.path is None:
+            self.path = ".x"
         #Jezeli nie posiada odpowiedniego formatu bedzie otwierac okno do wyboru zdjecia
-        while not path.lower().endswith(('.png', '.jpg', '.jpeg')):
-            path = eg.fileopenbox()
+        while not self.path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            self.path = eg.fileopenbox()
         else:
             self.button1.setEnabled(True)
             self.button2.setEnabled(True)
-        return path
+        return self.path
 
     """Metoda do tworzenia modeli kNN i VGG16"""
     def create_knnmodel(self):
         global KNN, knnmodel
         #Stworzenie modelu kNN dla zbioru zdjec
-        KNN = k_NN(path_to_dictionary=os.path.dirname(os.path.dirname([path][0])))
+        KNN = k_NN(path_to_dictionary=os.path.dirname(os.path.dirname([self.path][0])))
         knnmodel = KNN.kNN_model()
 
         self.button3.setEnabled(True)
@@ -142,7 +143,7 @@ class MainWindow(QWidget):
     def create_vgg16model(self):
         global VGG16, vgg16model
 
-        VGG16 = VGG_16(path_to_dictionary=os.path.dirname(os.path.dirname([path][0])))
+        VGG16 = VGG_16(path_to_dictionary=os.path.dirname(os.path.dirname([self.path][0])))
         VGG16.delete_dictionaries()
         vgg16model = VGG16.vgg16_model()
 
@@ -169,7 +170,7 @@ class MainWindow(QWidget):
     """Metoda do predykcji dla klasyfikatora kNN"""
     def kNN_predict(self):
         #Uzycie metody do predykcji z klasy k_NN dla wybranego zdjecia
-        label, predicted_label = KNN.kNN_prediction(model=knnmodel, path_to_image=[path])
+        label, predicted_label = KNN.kNN_prediction(model=knnmodel, path_to_image=[self.path])
         #Wyswietlenie wynikow w interfejsie aplikacji
         self.label1.setText("Labeled emotion: <b>{}</b>".format(label[0]))
         self.label2.setText("Predicted emotion: <b>{}</b>".format(predicted_label))
@@ -177,16 +178,17 @@ class MainWindow(QWidget):
     """Metoda do predykcji dla sieci neuronowej VGG16"""
     def VGG16_predict(self):
         if self.V1 is not None:
-            predicted_label = VGG16.prediction(nnmodel=[vgg16model], path_to_image=[path])
+            predicted_label = VGG16.prediction(nnmodel=[vgg16model], path_to_image=[self.path])
 
-            self.label4.setText("Labeled emotion: <b>{}</b>".format(path.split("\\")[-2]))
+            self.label4.setText("Labeled emotion: <b>{}</b>".format(self.path.split("\\")[-2]))
             self.label5.setText("Predicted emotion:  <b>{}</b>".format(predicted_label))
 
         if self.V2 is not None:
-            self.select_image()
-            predicted_label = VGG16_loaded.prediction(nnmodel=[model_loaded], path_to_image=[path])
+            if self.path == "":
+                self.select_image()
+            predicted_label = VGG16_loaded.prediction(nnmodel=[model_loaded], path_to_image=[self.path])
 
-            self.label4.setText("Labeled emotion: <b>{}</b>".format(path.split("\\")[-2]))
+            self.label4.setText("Labeled emotion: <b>{}</b>".format(self.path.split("\\")[-2]))
             self.label5.setText("Predicted emotion:  <b>{}</b>".format(predicted_label))
 
 
