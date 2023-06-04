@@ -34,6 +34,7 @@ class DataLoader:
         return (np.array(images), np.array(labels))
 
     def data_load_VGG(self, input_path, emotions):
+
         for idx, input_path in enumerate(input_path):
             image = cv2.imread(input_path)
             if self.preprocessor is not None:
@@ -73,6 +74,3 @@ class DataLoader:
                 src = "input/" + folder + "/" + file
                 dst = "test/" + folder + "/" + file
                 shutil.copyfile(src, dst)
-
-
-

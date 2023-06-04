@@ -8,7 +8,7 @@ class Preprocessor:
         self.width = width
         self.height = height
         self.interpolation = interpolation
-    
+
     """Metoda do zmiany wymiarow zdjec"""
     def preprocessing(self, image):
         return cv2.resize(src=image, dsize=(self.width, self.height), interpolation=self.interpolation)
