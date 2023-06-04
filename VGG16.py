@@ -1,112 +1,86 @@
+#siec neuronowa VGG16 || Tworzenie modelu, wczytanie modelu, przewidywanie emocji na podstawie stworzonego modelu
 import os
 import shutil
 import stat
-import cv2
+import numpy as np
 from imutils import paths
 from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import Activation, Dropout, Flatten, Dense
+from keras_preprocessing.image import load_img, img_to_array
+from keras.models import Sequential, load_model
+from keras.layers import Conv2D, MaxPooling2D, Activation, Dropout, Flatten, Dense
+
+
 from data_loader import DataLoader
 from data_preprocessing import Preprocessor
 
+class VGG_16:
 
-def redo_with_write(redo_func, path, err):
-    os.chmod(path, stat.S_IWRITE)
-    redo_func(path)
-
-#ścieżka do folderów train i test
-try:
-    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\test", onerror=redo_with_write)
-    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\train", onerror=redo_with_write)
-except OSError:
-    pass
-
-try:
-    os.makedirs("models")
-except OSError:
-    pass
-
-width, height = 224, 224
-input_shape = (width, height, 3)
-
-# W folderze input znajduja sie podfoldery z emocjami (klasy)
-input_path = list(paths.list_images("input"))
+    def __init__(self, path_to_dictionary):
+        self.path_to_dictionary = path_to_dictionary
+        self.preproc = Preprocessor(224, 224)
+        self.loader = DataLoader(preprocessor=[self.preproc])
+        self.input_shape = (224, 224, 3)
 
 
+    def delete_content(self, redo_func, path, err):
+        os.chmod(path, stat.S_IWRITE)
+        redo_func(path)
 
-# Pobieramy listę podfolderów z katalogu "input"
-folders = [f for f in os.listdir(input_path[0].split(os.path.sep)[-3]) if os.path.isdir(f"{input_path[0].split(os.path.sep)[-3]}\\" + f)]
-#Lista na pary emocji
-emotion_pairs = []
-emotion_pairs.append(tuple(folders))
+    def delete_dictionaries(self):
+        #ścieżka do folderów train i test
+        try:
+            shutil.rmtree(f"{os.path.dirname(self.path_to_dictionary)}" + "\\test", onerror=self.delete_content)
+        except OSError:
+            pass
 
-for idx, first in enumerate(folders):
-    for second in folders[idx + 1:]:
-        emotion_pairs.append((first, second))
+        try:
+            shutil.rmtree(f"{os.path.dirname(self.path_to_dictionary)}" + "\\train", onerror=self.delete_content)
+        except OSError:
+            pass
+
+        try:
+            os.makedirs("model")
+        except OSError:
+            pass
 
 
 
-preproc = Preprocessor(width, height)
-loader = DataLoader(preprocessor=[preproc])
+    def vgg16_model(self):
 
-for pair in emotion_pairs:
+        input_path = list(paths.list_images(self.path_to_dictionary))
 
-    loader.data_load_VGG(input_path, emotions=pair)
+        # Pobiera liste podfolderow z katalogu
+        folders = [f for f in os.listdir(input_path[0].split(os.path.sep)[-3]) if
+                   os.path.isdir(f"{input_path[0].split(os.path.sep)[-3]}\\" + f)]
 
-    train_data = "train"
-    validation_data = "test"
+        self.loader.data_load_VGG(input_path, emotions=folders)
 
-    nb_train_samples = len(list(paths.list_images("train")))
-    nb_validation_samples = train = len(list(paths.list_images("test")))
-    epochs = 15
-    batch_size = 16
+        train_data = "train"
+        validation_data = "test"
 
-    model = Sequential()
-    model.add(Conv2D(32, (2, 2), input_shape=input_shape))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        nb_train_samples = len(list(paths.list_images(train_data)))
+        nb_validation_samples = len(list(paths.list_images(validation_data)))
+        epochs = 15
+        batch_size = 16
 
-    model.add(Conv2D(32, (2, 2)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        model = Sequential()
+        model.add(Conv2D(32, (2, 2), input_shape=self.input_shape))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(64, (2, 2)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Conv2D(32, (2, 2)))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Flatten())
-    model.add(Dense(64))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.5))
-    if len(pair) == 2:
-        model.add(Dense(1))
-        model.add(Activation('sigmoid'))
+        model.add(Conv2D(64, (2, 2)))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
-        model.compile(loss='binary_crossentropy',
-                      optimizer='rmsprop',
-                      metrics=['accuracy'])
+        model.add(Flatten())
+        model.add(Dense(64))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.5))
 
-        train_datagen = ImageDataGenerator(
-            rescale=1. / 255,
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True)
-
-        test_datagen = ImageDataGenerator(rescale=1. / 255)
-
-        train_generator = train_datagen.flow_from_directory(
-            train_data,
-            target_size=(width, height),
-            batch_size=batch_size,
-            class_mode='binary')
-
-        validation_generator = test_datagen.flow_from_directory(
-            validation_data,
-            target_size=(width, height),
-            batch_size=batch_size,
-            class_mode='binary')
-    else:
         model.add(Dense(5))
         model.add(Activation('softmax'))
 
@@ -124,28 +98,50 @@ for pair in emotion_pairs:
 
         train_generator = train_datagen.flow_from_directory(
             train_data,
-            target_size=(width, height),
+            target_size=(self.input_shape[0], self.input_shape[1]),
             batch_size=batch_size,
             class_mode='categorical')
 
         validation_generator = test_datagen.flow_from_directory(
             validation_data,
-            target_size=(width, height),
+            target_size=(self.input_shape[0], self.input_shape[1]),
             batch_size=batch_size,
             class_mode='categorical')
 
-    model.fit_generator(
-        train_generator,
-        steps_per_epoch=nb_train_samples // batch_size,
-        epochs=epochs,
-        validation_data=validation_generator,
-        validation_steps=nb_validation_samples // batch_size)
-    if len(pair) == 2:
-        model.save(f'models\\{pair[0]}_{pair[1]}.h5')
-    else:
-        model.save(f'models\\all_emotions.h5')
+        model.fit_generator(
+            train_generator,
+            steps_per_epoch=nb_train_samples // batch_size,
+            epochs=epochs,
+            validation_data=validation_generator,
+            validation_steps=nb_validation_samples // batch_size)
+        model_name = "model\\all_emotions.h5"
+        model.save(model_name)
 
 
-    # Usuwanie podfolderów z zawartością żeby móc stworzyć model dla nowych emocji
-    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\test", onerror=redo_with_write)
-    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\train", onerror=redo_with_write)
+        # Usuwanie podfolderów z zawartością żeby móc stworzyć model dla nowych emocji
+        shutil.rmtree(f"{os.path.dirname(self.path_to_dictionary)}" + "\\test", onerror=self.delete_content)
+        shutil.rmtree(f"{os.path.dirname(self.path_to_dictionary)}" + "\\train", onerror=self.delete_content)
+
+        return model_name
+
+
+    def prediction(self, nnmodel, path_to_image):
+
+        model = load_model(nnmodel[0])
+
+
+        # Wczytanie i przetworzenie obrazu
+        image = load_img(path_to_image[0], target_size=(224, 224))
+        image = img_to_array(image)
+        image = np.expand_dims(image, axis=0)
+
+        class_mapping = {0: 'anger', 1: 'disgust', 2: 'fear', 3: 'happiness', 4: 'sadness'}
+        prediction = model.predict(image)
+
+        # Pobierz indeks klasy z najwyższym prawdopodobieństwem
+        predicted_emotion = np.argmax(prediction)
+
+        # Przypisz emocję na podstawie indeksu
+        predicted_emotion = class_mapping[predicted_emotion]
+
+        return predicted_emotion
