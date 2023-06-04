@@ -17,8 +17,8 @@ def redo_with_write(redo_func, path, err):
 
 #ścieżka do folderów train i test
 try:
-    shutil.rmtree("path\\to\\test", onerror=redo_with_write)
-    shutil.rmtree("path\\to\\train", onerror=redo_with_write)
+    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\test", onerror=redo_with_write)
+    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\train", onerror=redo_with_write)
 except OSError:
     pass
 
@@ -39,6 +39,7 @@ input_path = list(paths.list_images("input"))
 folders = [f for f in os.listdir(input_path[0].split(os.path.sep)[-3]) if os.path.isdir(f"{input_path[0].split(os.path.sep)[-3]}\\" + f)]
 #Lista na pary emocji
 emotion_pairs = []
+emotion_pairs.append(tuple(folders))
 
 for idx, first in enumerate(folders):
     for second in folders[idx + 1:]:
@@ -50,6 +51,7 @@ preproc = Preprocessor(width, height)
 loader = DataLoader(preprocessor=[preproc])
 
 for pair in emotion_pairs:
+
     loader.data_load_VGG(input_path, emotions=pair)
 
     train_data = "train"
@@ -77,32 +79,60 @@ for pair in emotion_pairs:
     model.add(Dense(64))
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
+    if len(pair) == 2:
+        model.add(Dense(1))
+        model.add(Activation('sigmoid'))
 
-    model.compile(loss='binary_crossentropy',
-                  optimizer='rmsprop',
-                  metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy',
+                      optimizer='rmsprop',
+                      metrics=['accuracy'])
 
-    train_datagen = ImageDataGenerator(
-        rescale=1. / 255,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True)
+        train_datagen = ImageDataGenerator(
+            rescale=1. / 255,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True)
 
-    test_datagen = ImageDataGenerator(rescale=1. / 255)
+        test_datagen = ImageDataGenerator(rescale=1. / 255)
 
-    train_generator = train_datagen.flow_from_directory(
-        train_data,
-        target_size=(width, height),
-        batch_size=batch_size,
-        class_mode='binary')
+        train_generator = train_datagen.flow_from_directory(
+            train_data,
+            target_size=(width, height),
+            batch_size=batch_size,
+            class_mode='binary')
 
-    validation_generator = test_datagen.flow_from_directory(
-        validation_data,
-        target_size=(width, height),
-        batch_size=batch_size,
-        class_mode='binary')
+        validation_generator = test_datagen.flow_from_directory(
+            validation_data,
+            target_size=(width, height),
+            batch_size=batch_size,
+            class_mode='binary')
+    else:
+        model.add(Dense(5))
+        model.add(Activation('softmax'))
+
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='rmsprop',
+                      metrics=['accuracy'])
+
+        train_datagen = ImageDataGenerator(
+            rescale=1. / 255,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True)
+
+        test_datagen = ImageDataGenerator(rescale=1. / 255)
+
+        train_generator = train_datagen.flow_from_directory(
+            train_data,
+            target_size=(width, height),
+            batch_size=batch_size,
+            class_mode='categorical')
+
+        validation_generator = test_datagen.flow_from_directory(
+            validation_data,
+            target_size=(width, height),
+            batch_size=batch_size,
+            class_mode='categorical')
 
     model.fit_generator(
         train_generator,
@@ -110,13 +140,12 @@ for pair in emotion_pairs:
         epochs=epochs,
         validation_data=validation_generator,
         validation_steps=nb_validation_samples // batch_size)
+    if len(pair) == 2:
+        model.save(f'models\\{pair[0]}_{pair[1]}.h5')
+    else:
+        model.save(f'models\\all_emotions.h5')
 
-    model.save(f'models\\{pair[0]}_{pair[1]}')
 
-
-    def redo_with_write(redo_func, path, err):
-        os.chmod(path, stat.S_IWRITE)
-        redo_func(path)
     # Usuwanie podfolderów z zawartością żeby móc stworzyć model dla nowych emocji
-    shutil.rmtree("path\\to\\test", onerror=redo_with_write)
-    shutil.rmtree("path\\to\\train", onerror=redo_with_write)
+    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\test", onerror=redo_with_write)
+    shutil.rmtree("C:\\Users\\Konrad\\Desktop\\Inzynierka\\NOWE\\train", onerror=redo_with_write)
