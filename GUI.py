@@ -3,6 +3,7 @@ import sys
 import os
 import easygui as eg
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
 from kNN import k_NN
 from VGG16 import VGG_16
@@ -11,6 +12,7 @@ class MainWindow(QWidget):
     def __init__(self):
         self.V1 = None
         self.V2 = None
+        self.path = ""
         super().__init__()
 
         # Ustawienia okna
@@ -69,62 +71,69 @@ class MainWindow(QWidget):
         self.label5 = QLabel('Predicted emotion:', self)
         self.label5.setAlignment(Qt.AlignCenter)
 
-        # Uklad pionowy dla przyciskow
-        vbox1 = QVBoxLayout()
-        vbox1.addWidget(self.button)
-        vbox1.addWidget(self.button1)
-        vbox1.addWidget(self.button2)
-        vbox1.addWidget(self.button5)
-
-        # Uklad pionowy dla etykiet kNN
-        vbox2 = QVBoxLayout()
-        vbox2.addWidget(self.label)
-        vbox2.addWidget(self.button3)
-        vbox2.addWidget(self.label1)
-        vbox2.addWidget(self.label2)
-
-        # Uklad pionowy dla etykiet VGG16
-        vbox3 = QVBoxLayout()
-        vbox3.addWidget(self.label3)
-        vbox3.addWidget(self.button4)
-        vbox3.addWidget(self.label4)
-        vbox3.addWidget(self.label5)
-
-        # Uklad poziomy dla etykiety i przyciskow
+        # Uklad poziomy dla label knn i vgg16
         hbox = QHBoxLayout()
-        hbox.addLayout(vbox1)
-        hbox.addLayout(vbox2)
-        hbox.addLayout(vbox3)
+        hbox.addWidget(self.label)
+        hbox.addWidget(self.label3)
 
-        # Uklad pionowy
+        # Uklad poziomy dla przyciskow create vgg16 i load vgg16
+        hbox1 = QHBoxLayout()
+        hbox1.addWidget(self.button2)
+        hbox1.addWidget(self.button5)
+
+        # Uklad poziomy dla przyciskow create knn i uklady przyciskow vgg16
+        hbox2 = QHBoxLayout()
+        hbox2.addWidget(self.button1)
+        hbox2.addLayout(hbox1)
+
+        # Uklad poziomy dla przyciskow create vgg16 i load vgg16
+        hbox3 = QHBoxLayout()
+        hbox3.addWidget(self.button3)
+        hbox3.addWidget(self.button4)
+
+        # Uklad poziomy dla labels labeled
+        hbox4 = QHBoxLayout()
+        hbox4.addWidget(self.label1)
+        hbox4.addWidget(self.label4)
+
+        # Uklad poziomy dla labels predicted
+        hbox5 = QHBoxLayout()
+        hbox5.addWidget(self.label2)
+        hbox5.addWidget(self.label5)
+
+        #Uklad pionowy dla wszystkich
         vbox = QVBoxLayout()
         vbox.addLayout(hbox)
+        vbox.addWidget(self.button)
+        vbox.addLayout(hbox2)
+        vbox.addLayout(hbox3)
+        vbox.addLayout(hbox4)
+        vbox.addLayout(hbox5)
 
-        # Ustawienie glownego ukladu dla okna
+        # Glowny uklad
         self.setLayout(vbox)
 
     """Metoda do wybrania zdjecia i jednoczesnie do wskazania folderu z pozostalymi zdjeciami 
     potrzebnymi do stworzenia modeli"""
     def select_image(self):
-        global path
         #Sciezka do zdjecia
-        path = eg.fileopenbox()
+        self.path = eg.fileopenbox()
         #Jezeli pusta to zostanie zastapiona .x
-        if path is None:
-            path = ".x"
+        if self.path is None:
+            self.path = ".x"
         #Jezeli nie posiada odpowiedniego formatu bedzie otwierac okno do wyboru zdjecia
-        while not path.lower().endswith(('.png', '.jpg', '.jpeg')):
-            path = eg.fileopenbox()
+        while not self.path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            self.path = eg.fileopenbox()
         else:
             self.button1.setEnabled(True)
             self.button2.setEnabled(True)
-        return path
+        return self.path
 
     """Metoda do tworzenia modeli kNN i VGG16"""
     def create_knnmodel(self):
         global KNN, knnmodel
         #Stworzenie modelu kNN dla zbioru zdjec
-        KNN = k_NN(path_to_dictionary=os.path.dirname(os.path.dirname([path][0])))
+        KNN = k_NN(path_to_dictionary=os.path.dirname(os.path.dirname([self.path][0])))
         knnmodel = KNN.kNN_model()
 
         self.button3.setEnabled(True)
@@ -135,7 +144,7 @@ class MainWindow(QWidget):
     def create_vgg16model(self):
         global VGG16, vgg16model
 
-        VGG16 = VGG_16(path_to_dictionary=os.path.dirname(os.path.dirname([path][0])))
+        VGG16 = VGG_16(path_to_dictionary=os.path.dirname(os.path.dirname([self.path][0])))
         VGG16.delete_dictionaries()
         vgg16model = VGG16.vgg16_model()
 
@@ -162,27 +171,42 @@ class MainWindow(QWidget):
     """Metoda do predykcji dla klasyfikatora kNN"""
     def kNN_predict(self):
         #Uzycie metody do predykcji z klasy k_NN dla wybranego zdjecia
-        label, predicted_label = KNN.kNN_prediction(model=knnmodel, path_to_image=[path])
+        label, predicted_label = KNN.kNN_prediction(model=knnmodel, path_to_image=[self.path])
         #Wyswietlenie wynikow w interfejsie aplikacji
         self.label1.setText("Labeled emotion: <b>{}</b>".format(label[0]))
         self.label2.setText("Predicted emotion: <b>{}</b>".format(predicted_label))
+        self.update_colors(self.label1, self.label2)
 
     """Metoda do predykcji dla sieci neuronowej VGG16"""
     def VGG16_predict(self):
         if self.V1 is not None:
-            predicted_label = VGG16.prediction(nnmodel=[vgg16model], path_to_image=[path])
+            predicted_label = VGG16.prediction(nnmodel=[vgg16model], path_to_image=[self.path])
 
-            self.label4.setText("Labeled emotion: <b>{}</b>".format(path.split("\\")[-2]))
+            self.label4.setText("Labeled emotion: <b>{}</b>".format(self.path.split("\\")[-2]))
             self.label5.setText("Predicted emotion:  <b>{}</b>".format(predicted_label))
+            self.update_colors(self.label4, self.label5)
 
         if self.V2 is not None:
-            self.select_image()
-            predicted_label = VGG16_loaded.prediction(nnmodel=[model_loaded], path_to_image=[path])
+            if self.path == "":
+                self.select_image()
+            predicted_label = VGG16_loaded.prediction(nnmodel=[model_loaded], path_to_image=[self.path])
 
-            self.label4.setText("Labeled emotion: <b>{}</b>".format(path.split("\\")[-2]))
+            self.label4.setText("Labeled emotion: <b>{}</b>".format(self.path.split("\\")[-2]))
             self.label5.setText("Predicted emotion:  <b>{}</b>".format(predicted_label))
+            self.update_colors(self.label4, self.label5)
+    """Metoda do zmiany kolorow"""
 
+    # Zaktualizuj metodę update_colors w klasie MainWindow
+    def update_colors(self, labeled, predicted):
+        labeled_text = labeled.text().split(":")[-1].strip()
+        predicted_text = predicted.text().split(":")[-1].strip()
 
+        if labeled_text == predicted_text:
+            labeled.setStyleSheet("color: green")
+            predicted.setStyleSheet("color: green")
+        else:
+            labeled.setStyleSheet("color: red")
+            predicted.setStyleSheet("color: red")
 
 
 if __name__ == '__main__':
