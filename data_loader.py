@@ -4,6 +4,7 @@ import cv2
 import random
 import shutil
 import numpy as np
+from imutils import paths
 
 class DataLoader:
     def __init__(self, preprocessor=None):
@@ -35,6 +36,13 @@ class DataLoader:
 
     def data_load_VGG(self, input_path, emotions):
 
+
+        src_folder = "input"
+        dst_folder = "input_vgg16"
+        shutil.copytree(src_folder, dst_folder)
+
+        input_path = list(paths.list_images("input_vgg16"))
+        print(input_path)
         for idx, input_path in enumerate(input_path):
             image = cv2.imread(input_path)
             if self.preprocessor is not None:
@@ -59,18 +67,18 @@ class DataLoader:
 
         # Dzieli pliki w podfolderach na dwie grupy: 80% dla "train" i 20% dla "train"
         for folder in emotions:
-            files = os.listdir("input/" + folder)
+            files = os.listdir("input_vgg16/" + folder)
             split = int(0.8 * len(files))
             train_files = random.sample(files, split)
             test_files = [f for f in files if f not in train_files]
 
             # Przenosi pliki do odpowiednich podfolderów
             for file in train_files:
-                src = "input/" + folder + "/" + file
+                src = "input_vgg16/" + folder + "/" + file
                 dst = "train/" + folder + "/" + file
                 shutil.copyfile(src, dst)
 
             for file in test_files:
-                src = "input/" + folder + "/" + file
+                src = "input_vgg16/" + folder + "/" + file
                 dst = "test/" + folder + "/" + file
                 shutil.copyfile(src, dst)
