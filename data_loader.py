@@ -42,7 +42,7 @@ class DataLoader:
         shutil.copytree(src_folder, dst_folder)
 
         input_path = list(paths.list_images("input_vgg16"))
-        print(input_path)
+
         for idx, input_path in enumerate(input_path):
             image = cv2.imread(input_path)
             if self.preprocessor is not None:

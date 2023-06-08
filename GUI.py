@@ -3,7 +3,6 @@ import sys
 import os
 import easygui as eg
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
 from kNN import k_NN
 from VGG16 import VGG_16
@@ -131,6 +130,7 @@ class MainWindow(QWidget):
 
     """Metoda do tworzenia modeli kNN i VGG16"""
     def create_knnmodel(self):
+        print(self.path)
         global KNN, knnmodel
         #Stworzenie modelu kNN dla zbioru zdjec
         KNN = k_NN(path_to_dictionary=os.path.dirname(os.path.dirname([self.path][0])))
@@ -176,6 +176,7 @@ class MainWindow(QWidget):
         self.label1.setText("Labeled emotion: <b>{}</b>".format(label[0]))
         self.label2.setText("Predicted emotion: <b>{}</b>".format(predicted_label))
         self.update_colors(self.label1, self.label2)
+
 
     """Metoda do predykcji dla sieci neuronowej VGG16"""
     def VGG16_predict(self):
