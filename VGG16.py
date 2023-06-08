@@ -15,11 +15,13 @@ from data_preprocessing import Preprocessor
 
 class VGG_16:
 
-    def __init__(self, path_to_dictionary):
+    def __init__(self, path_to_dictionary, width=224, height=224):
+        self.width = width
+        self.height = height
         self.path_to_dictionary = path_to_dictionary
-        self.preproc = Preprocessor(224, 224)
+        self.preproc = Preprocessor(width=self.width, height=self.height)
         self.loader = DataLoader(preprocessor=[self.preproc])
-        self.input_shape = (224, 224, 3)
+        self.input_shape = (self.width, self.height, 3)
 
 
     def delete_content(self, redo_func, path, err):
@@ -39,11 +41,14 @@ class VGG_16:
             pass
 
         try:
-            os.makedirs("model")
+            shutil.rmtree("input_vgg16", onerror=self.delete_content)
         except OSError:
             pass
 
-
+        try:
+            os.makedirs("model")
+        except OSError:
+            pass
 
     def vgg16_model(self):
 
@@ -53,7 +58,7 @@ class VGG_16:
         folders = [f for f in os.listdir(input_path[0].split(os.path.sep)[-3]) if
                    os.path.isdir(f"{input_path[0].split(os.path.sep)[-3]}\\" + f)]
 
-        self.loader.data_load_VGG(input_path, emotions=folders)
+        self.loader.data_load_VGG(input_path=input_path, emotions=folders)
 
         train_data = "train"
         validation_data = "test"
@@ -131,7 +136,7 @@ class VGG_16:
 
 
         # Wczytanie i przetworzenie obrazu
-        image = load_img(path_to_image[0], target_size=(224, 224))
+        image = load_img(path_to_image[0], target_size=(self.width, self.height))
         image = img_to_array(image)
         image = np.expand_dims(image, axis=0)
 
